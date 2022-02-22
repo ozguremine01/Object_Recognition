@@ -56,15 +56,14 @@ def decode_netout(netout, anchors, obj_thresh, net_h, net_w):
 		row = i / grid_w
 		col = i % grid_w
 		for b in range(nb_box):
-			# 4th element is objectness score
+			
 			objectness = netout[int(row)][int(col)][b][4]
-			if(objectness.all() <= obj_thresh): continue
-			# first 4 elements are x, y, w, and h
+			if(objectness.all() <= obj_thresh): continue			
 			x, y, w, h = netout[int(row)][int(col)][b][:4]
-			x = (col + x) / grid_w # center position, unit: image width
-			y = (row + y) / grid_h # center position, unit: image height
-			w = anchors[2 * b + 0] * np.exp(w) / net_w # unit: image width
-			h = anchors[2 * b + 1] * np.exp(h) / net_h # unit: image height
+			x = (col + x) / grid_w 
+			y = (row + y) / grid_h 
+			w = anchors[2 * b + 0] * np.exp(w) / net_w 
+			h = anchors[2 * b + 1] * np.exp(h) / net_h 
 			# last elements are class probabilities
 			classes = netout[int(row)][col][b][5:]
 			box = BoundBox(x-w/2, y-h/2, x+w/2, y+h/2, objectness, classes)
@@ -165,11 +164,11 @@ def _conv_block(inp, convs, skip=True):
 		if count == (len(convs) - 2) and skip:
 			skip_connection = x
 		count += 1
-		if conv['stride'] > 1: x = ZeroPadding2D(((1,0),(1,0)))(x) # peculiar padding as darknet prefer left and top
+		if conv['stride'] > 1: x = ZeroPadding2D(((1,0),(1,0)))(x)
 		x = Conv2D(conv['filter'],
 				   conv['kernel'],
 				   strides=conv['stride'],
-				   padding='valid' if conv['stride'] > 1 else 'same', # peculiar padding as darknet prefer left and top
+				   padding='valid' if conv['stride'] > 1 else 'same',
 				   name='conv_' + str(conv['layer_idx']),
 				   use_bias=False if conv['bnorm'] else True)(x)
 		if conv['bnorm']: x = BatchNormalization(epsilon=0.001, name='bnorm_' + str(conv['layer_idx']))(x)
@@ -312,62 +311,58 @@ class WeightReader:
 
 	def reset(self):
 		self.offset = 0
-
-# define the model
+		
 model = make_yolov3_model()
-# load the model weights
+
 weight_reader = WeightReader('C:\\Users\\Pc\\Downloads\\yolov3.weights')
-# set the model weights into the model
+
 weight_reader.load_weights(model)
-# save the model to file
+
 ######
 #model.save('model.h5')		
 print(model.get_layer)
 
 image = load_img('C:\\Users\\Pc\\Desktop\\zebra.jpg', target_size=(416, 416))
-# convert to numpy array
+
 image = img_to_array(image)
-# scale pixel values to [0, 1]
+
 image = image.astype('float32')
 image /= 255.0
 print(model.name)
 def load_image_pixels(filename, shape):
-    # load the image to get its shape
+   
     image = load_img(filename)
     width, height = image.size
-    # load the image with the required size
+   
     image = load_img(filename, target_size=shape)
-    # convert to numpy array
+    
     image = img_to_array(image)
-    # scale pixel values to [0, 1]
+    
     image = image.astype('float32')
     image /= 255.0
-    # add a dimension so that we have one sample
+    
     image = expand_dims(image, 0)
     return image, width, height
 ####
 model= load_model('C:\\Users\\Pc\\source\\repos\\PythonApplication14\\PythonApplication14\\model.h5')
 input_w, input_h = 416, 416
-# define our new photo
+
 photo_filename = 'C:\\Users\\Pc\\Desktop\\zebra.jpg'
-# load and prepare image
+
 image, image_w, image_h = load_image_pixels(photo_filename, (input_w, input_h))
-# make prediction
+
 yhat = model.predict(image)
-# summarize the shape of the list of arrays
+
 print([a.shape for a in yhat])
 anchors = [[116,90, 156,198, 373,326], [30,61, 62,45, 59,119], [10,13, 16,30, 33,23]]
-# define the probability threshold for detected objects
+
 class_threshold = 0.6
 boxes = list()
-for i in range(len(yhat)):
-	# decode the output of the network
+for i in range(len(yhat)):	
 	boxes += decode_netout(yhat[i][0], anchors[i], class_threshold, input_h, input_w)
-# correct the sizes of the bounding boxes for the shape of the image
 correct_yolo_boxes(boxes, image_h, image_w, input_h, input_w)
-# suppress non-maximal boxes
 do_nms(boxes, 0.5)
-# define the labels
+
 labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck",
 	"boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
 	"bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
@@ -378,11 +373,9 @@ labels = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", 
 	"chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse",
 	"remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
 	"book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"]
-# get the details of the detected objects
 v_boxes, v_labels, v_scores = get_boxes(boxes, labels, class_threshold)
 # summarize what we found
 for i in range(len(v_boxes)):
 	print(v_labels[i], v_scores[i])
-# draw what we found
 draw_boxes(photo_filename, v_boxes, v_labels, v_scores)
 
